@@ -127,10 +127,10 @@ public class CallController : ControllerBase
     {
       // Find your Account SID and Auth Token at twilio.com/console
       // and set the environment variables. See http://twil.io/secure
-      // string accountSid = Environment.GetEnvironmentVariable("TWILIO_ACCOUNT_SID") ?? throw new InvalidOperationException("TWILIO_ACCOUNT_SID environment variable is not set.");
-      // string authToken = Environment.GetEnvironmentVariable("TWILIO_AUTH_TOKEN") ?? throw new InvalidOperationException("TWILIO_AUTH_TOKEN environment variable is not set.");
+      string accountSid = Environment.GetEnvironmentVariable("TWILIO_ACCOUNT_SID") ?? throw new InvalidOperationException("TWILIO_ACCOUNT_SID environment variable is not set.");
+      string authToken = Environment.GetEnvironmentVariable("TWILIO_AUTH_TOKEN") ?? throw new InvalidOperationException("TWILIO_AUTH_TOKEN environment variable is not set.");
 
-      TwilioClient.Init("AC499f6a143f51acc90659d2fbb1a250a1", "22abe014443ff0e20630bc4b22c94487");
+      TwilioClient.Init(accountSid, authToken);
 
       var call = await CallResource.CreateAsync(
           twiml: new Twilio.Types.Twiml(@$"
