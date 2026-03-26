@@ -1,0 +1,6 @@
+@make_call_HostAddress = http://localhost:5086
+
+GET {{make_call_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

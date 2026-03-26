@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "make-call", "make-call.csproj", "{B9616FED-7A53-056F-9066-BB6DF7A2C1BF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B9616FED-7A53-056F-9066-BB6DF7A2C1BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9616FED-7A53-056F-9066-BB6DF7A2C1BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9616FED-7A53-056F-9066-BB6DF7A2C1BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9616FED-7A53-056F-9066-BB6DF7A2C1BF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2D219941-3C40-4C36-897B-20BBC701D0D3}
+	EndGlobalSection
+EndGlobal
