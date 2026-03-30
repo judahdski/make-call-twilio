@@ -1,3 +1,7 @@
+using System.Formats.Asn1;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
 using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
 using Twilio;
@@ -79,8 +83,10 @@ public class CallController : ControllerBase
   }
 
   [HttpPost("record")]
-  public IActionResult ProcessRecord()
+  public async Task<IActionResult> ProcessRecord()
   {
+    using var httpClient = new HttpClient();
+
     var form = Request.Form;
 
     var recordingUrl = form["RecordingUrl"];
@@ -91,6 +97,8 @@ public class CallController : ControllerBase
     Console.WriteLine($"Call SID: {callSid}");
 
     // Do something with the recording URL, e.g., save it to a database or process it further
+    var audioBytes = await GetAudioFromRecordingUrl(httpClient, recordingUrl + ".wav");
+    var transcription = ConvertToTranscription(httpClient, audioBytes);
 
     // Response ketika recording selesai, bisa diubah sesuai kebutuhan
     var response = @"<?xml version=""1.0"" encoding=""UTF-8""?>
@@ -99,6 +107,71 @@ public class CallController : ControllerBase
       </Response>";
 
     return Content(response, "text/xml");
+  }
+
+  private async Task<byte[]> GetAudioFromRecordingUrl(HttpClient httpClient, string recordingUrl)
+  {
+    var accountSid = Env.GetString("TWILIO_ACCOUNT_SID") ?? throw new InvalidOperationException("TWILIO_ACCOUNT_SID environment variable is not set.");
+    var authToken = Env.GetString("TWILIO_AUTH_TOKEN") ?? throw new InvalidOperationException("TWILIO_AUTH_TOKEN environment variable is not set.");
+
+    var requestToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{accountSid}:{authToken}"));
+    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", requestToken);
+
+    using var response = await httpClient.GetAsync(recordingUrl);
+    if (!response.IsSuccessStatusCode)
+    {
+      throw new Exception($"Failed to fetch audio from recording URL. Status code: {response.StatusCode}");
+    }
+
+    return await response.Content.ReadAsByteArrayAsync();
+  }
+
+  private async Task<string> ConvertToTranscription(HttpClient httpClient, byte[] audioBytes)
+  {
+    var elevenLabsApiKey = Env.GetString("ELEVENLABS_API_KEY") ?? throw new InvalidOperationException("ELEVENLABS_API_KEY environment variable is not set.");
+
+    httpClient.DefaultRequestHeaders.Add("xi-api-key", elevenLabsApiKey);
+
+    using var form = new MultipartFormDataContent();
+
+    var fileContent = new ByteArrayContent(audioBytes);
+    fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("audio/wav");
+
+    form.Add(fileContent, "file", $"transcription-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid()}.wav");
+
+    // optional param
+    form.Add(new StringContent("scribe_v2"), "model_id");
+
+    var response = await httpClient.PostAsync(
+        "https://api.elevenlabs.io/v1/speech-to-text",
+        form
+    );
+
+    return await response.Content.ReadAsStringAsync();
+  }
+
+  private async Task<string> ConvertToTranscriptionOpenAI(HttpClient httpClient, byte[] audioBytes)
+  {
+    using var form = new MultipartFormDataContent();
+
+    // file
+    using var fileStream = new MemoryStream(audioBytes);
+    form.Add(new StreamContent(fileStream), "file", "sample.mp3");
+
+    // model
+    form.Add(new StringContent("gpt-4o-transcribe"), "model");
+
+
+    var openAiApiKey = Env.GetString("OPENAI_API_KEY");
+
+    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", openAiApiKey);
+    var response = await httpClient.PostAsync("https://api.openai.com/v1/audio/transcriptions", form);
+
+    return await response.Content.ReadAsStringAsync();
+
+
+    // Implementation for converting audio bytes to text transcription
+    return "Transcription would be here (this is a placeholder).";
   }
 
   [HttpPost("status")]
