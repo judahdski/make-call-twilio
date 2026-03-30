@@ -12,7 +12,9 @@ using Twilio.Rest.Api.V2010.Account;
 [Route("api/twilio/[controller]")]
 public class CallController : ControllerBase
 {
-  private const string URL = "https://unflippantly-fusilly-hortensia.ngrok-free.dev/api/twilio/";
+  private const string URL = "https://ba53-103-135-26-163.ngrok-free.app/api/twilio/Call";
+  private const string RecordURL = $"{URL}/record";
+  private const string StatusURL = $"{URL}/status";
 
   private string GetTwilioToken(string callerIdentity)
   {
@@ -60,15 +62,14 @@ public class CallController : ControllerBase
       <Response>
           <Say>Halo, ini panggilan dari sistem kami.</Say>
 
-          <Dial callerId=""{Env.GetString("TWILIO_PHONE_NUMBER")}"">
+          <Dial 
+            action=""{StatusURL}"" 
+            callerId=""{Env.GetString("TWILIO_PHONE_NUMBER")}"" 
+            record=""record-from-answer"" 
+            recordingStatusCallback=""{RecordURL}""
+          >
             <Number>{to}</Number>
           </Dial>
-
-          <Record 
-            action=""{URL}Call/process-record"" 
-            maxLength=""30"" 
-            playBeep=""true"" 
-          />
       </Response>";
   }
 
@@ -93,12 +94,14 @@ public class CallController : ControllerBase
     var callSid = form["CallSid"];
 
     // DEBUG PURPOSE ONLY
+    Console.WriteLine("=== TWILIO RECORDING CALLBACK ===");
     Console.WriteLine($"Recording URL: {recordingUrl}");
     Console.WriteLine($"Call SID: {callSid}");
+    Console.WriteLine("================================");
 
     // Do something with the recording URL, e.g., save it to a database or process it further
-    var audioBytes = await GetAudioFromRecordingUrl(httpClient, recordingUrl + ".wav");
-    var transcription = ConvertToTranscription(httpClient, audioBytes);
+    // var audioBytes = await GetAudioFromRecordingUrl(httpClient, recordingUrl + ".wav");
+    // var transcription = ConvertToTranscription(httpClient, audioBytes);
 
     // Response ketika recording selesai, bisa diubah sesuai kebutuhan
     var response = @"<?xml version=""1.0"" encoding=""UTF-8""?>
@@ -240,23 +243,6 @@ public class CallController : ControllerBase
         Message = $"Error initiating call: {ex.Message}"
       });
     }
-  }
-
-  [HttpPost("voice")]
-  public IActionResult Voice()
-  {
-    var twiml = @$"<?xml version=""1.0"" encoding=""UTF-8""?>
-      <Response>
-          <Say>Halo, ini panggilan dari sistem kami.</Say>
-
-          <Record 
-            action=""{URL}Call/process-record"" 
-            maxLength=""30"" 
-            playBeep=""true"" 
-          />
-      </Response>";
-
-    return Content(twiml, "text/xml");
   }
 
   [HttpGet("testing")]
