@@ -16,6 +16,7 @@ public class CallController : ControllerBase
   private const string RecordURL = $"{URL}/record";
   private const string StatusURL = $"{URL}/status";
 
+  #region Get token
   private string GetTwilioToken(string callerIdentity)
   {
     string accountSid = Env.GetString("TWILIO_ACCOUNT_SID") ?? throw new InvalidOperationException("TWILIO_ACCOUNT_SID environment variable is not set.");
@@ -55,7 +56,9 @@ public class CallController : ControllerBase
       return BadRequest(new { success = false, error = ex.Message });
     }
   }
+  #endregion
 
+  #region Make Call
   private static string GetTwilioTemplateResponse(string to)
   {
     return @$"<?xml version=""1.0"" encoding=""UTF-8""?>
@@ -82,7 +85,9 @@ public class CallController : ControllerBase
 
     return Content(response.ToString(), "text/xml");
   }
+  #endregion
 
+  #region Record
   [HttpPost("record")]
   public async Task<IActionResult> ProcessRecord()
   {
@@ -99,10 +104,6 @@ public class CallController : ControllerBase
     Console.WriteLine($"Call SID: {callSid}");
     Console.WriteLine("================================");
 
-    // Do something with the recording URL, e.g., save it to a database or process it further
-    // var audioBytes = await GetAudioFromRecordingUrl(httpClient, recordingUrl + ".wav");
-    // var transcription = ConvertToTranscription(httpClient, audioBytes);
-
     // Response ketika recording selesai, bisa diubah sesuai kebutuhan
     var response = @"<?xml version=""1.0"" encoding=""UTF-8""?>
       <Response>
@@ -111,7 +112,91 @@ public class CallController : ControllerBase
 
     return Content(response, "text/xml");
   }
+  #endregion
 
+  #region Get status
+  [HttpPost("status")]
+  public IActionResult CallStatus()
+  {
+    var form = Request.Form;
+
+    var dialCallSid = form["DialCallSid"].ToString();
+    var dialCallStatus = form["DialCallStatus"].ToString();
+    var dialCallDuration = form["DialCallDuration"].ToString();
+
+    // DEBUG PURPOSE ONLY
+    Console.WriteLine("=== TWILIO STATUS CALLBACK ===");
+    Console.WriteLine($"CallSid     : {dialCallSid}");
+    Console.WriteLine($"CallStatus  : {dialCallStatus}");
+    Console.WriteLine($"AnsweredBy  : {dialCallDuration}");
+    Console.WriteLine("================================");
+
+    return Ok();
+  }
+  #endregion
+
+  #region Robot call
+  [HttpGet("roboCall")]
+  public async Task<IActionResult> CallSomeone()
+  {
+    try
+    {
+      // Find your Account SID and Auth Token at twilio.com/console
+      // and set the environment variables. See http://twil.io/secure
+      string accountSid = Environment.GetEnvironmentVariable("TWILIO_ACCOUNT_SID") ?? throw new InvalidOperationException("TWILIO_ACCOUNT_SID environment variable is not set.");
+      string authToken = Environment.GetEnvironmentVariable("TWILIO_AUTH_TOKEN") ?? throw new InvalidOperationException("TWILIO_AUTH_TOKEN environment variable is not set.");
+
+      TwilioClient.Init(accountSid, authToken);
+
+      var call = await CallResource.CreateAsync(
+          twiml: new Twilio.Types.Twiml(@$"
+              <Response>
+                  <Say>Halo, ini panggilan dari sistem kami.</Say>
+          
+                  <Dial>
+                    <Number>+62811842223</Number>
+                  </Dial>
+
+                  <Record 
+                      action=""{URL}Call/process-record"" 
+                      maxLength=""30"" 
+                      playBeep=""true"" />
+              </Response>
+            "),
+          to: new Twilio.Types.PhoneNumber("+6281387306360"),
+          from: new Twilio.Types.PhoneNumber("+15188004785"),
+          statusCallback: new Uri($"{URL}Call/status")
+      );
+
+      return Ok(new
+      {
+        Success = true,
+        CallSID = call.Sid,
+        Message = "Call initiated successfully!"
+      });
+    }
+    catch (Exception ex)
+    {
+      return BadRequest(new
+      {
+        Success = false,
+        Message = $"Error initiating call: {ex.Message}"
+      });
+    }
+  }
+  #endregion
+
+  [HttpGet("testing")]
+  public IActionResult Testing()
+  {
+    return Ok(new
+    {
+      Success = true,
+      Message = "Recording received successfully!"
+    });
+  }
+
+  #region ConvertToTranscript
   private async Task<byte[]> GetAudioFromRecordingUrl(HttpClient httpClient, string recordingUrl)
   {
     var accountSid = Env.GetString("TWILIO_ACCOUNT_SID") ?? throw new InvalidOperationException("TWILIO_ACCOUNT_SID environment variable is not set.");
@@ -176,82 +261,5 @@ public class CallController : ControllerBase
     // Implementation for converting audio bytes to text transcription
     return "Transcription would be here (this is a placeholder).";
   }
-
-  [HttpPost("status")]
-  public IActionResult CallStatus()
-  {
-    var form = Request.Form;
-
-    var callSid = form["CallSid"].ToString();
-    var callStatus = form["CallStatus"].ToString();
-    var answeredBy = form["AnsweredBy"].ToString(); // bisa kosong
-
-    // DEBUG PURPOSE ONLY
-    Console.WriteLine("=== TWILIO STATUS CALLBACK ===");
-    Console.WriteLine($"CallSid     : {callSid}");
-    Console.WriteLine($"CallStatus  : {callStatus}");
-    Console.WriteLine($"AnsweredBy  : {answeredBy}");
-    Console.WriteLine("================================");
-
-    return Ok(); // WAJIB 200 biar Twilio anggap sukses
-  }
-
-  [HttpGet("callSomeOne")]
-  public async Task<IActionResult> CallSomeone()
-  {
-    try
-    {
-      // Find your Account SID and Auth Token at twilio.com/console
-      // and set the environment variables. See http://twil.io/secure
-      string accountSid = Environment.GetEnvironmentVariable("TWILIO_ACCOUNT_SID") ?? throw new InvalidOperationException("TWILIO_ACCOUNT_SID environment variable is not set.");
-      string authToken = Environment.GetEnvironmentVariable("TWILIO_AUTH_TOKEN") ?? throw new InvalidOperationException("TWILIO_AUTH_TOKEN environment variable is not set.");
-
-      TwilioClient.Init(accountSid, authToken);
-
-      var call = await CallResource.CreateAsync(
-          twiml: new Twilio.Types.Twiml(@$"
-              <Response>
-                  <Say>Halo, ini panggilan dari sistem kami.</Say>
-          
-                  <Dial>
-                    <Number>+62811842223</Number>
-                  </Dial>
-
-                  <Record 
-                      action=""{URL}Call/process-record"" 
-                      maxLength=""30"" 
-                      playBeep=""true"" />
-              </Response>
-            "),
-          to: new Twilio.Types.PhoneNumber("+6281387306360"),
-          from: new Twilio.Types.PhoneNumber("+15188004785"),
-          statusCallback: new Uri($"{URL}Call/status")
-      );
-
-      return Ok(new
-      {
-        Success = true,
-        CallSID = call.Sid,
-        Message = "Call initiated successfully!"
-      });
-    }
-    catch (Exception ex)
-    {
-      return BadRequest(new
-      {
-        Success = false,
-        Message = $"Error initiating call: {ex.Message}"
-      });
-    }
-  }
-
-  [HttpGet("testing")]
-  public IActionResult Testing()
-  {
-    return Ok(new
-    {
-      Success = true,
-      Message = "Recording received successfully!"
-    });
-  }
+  #endregion
 }
