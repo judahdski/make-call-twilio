@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.21" />
+    <PackageReference Include="Npgsql" Version="10.0.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="System.Net.Http.Json" Version="10.0.5" />
     <PackageReference Include="Twilio" Version="7.14.3" />
